@@ -1,13 +1,15 @@
 import json
+from typing import Union
 
-from .loader import Loader, I18nFileLoadError
+from .loader import I18nFileLoadError, Loader
+
 
 class JsonLoader(Loader):
-    """class to load yaml files"""
+    """Class to load json files"""
     def __init__(self):
         super(JsonLoader, self).__init__()
 
-    def parse_file(self, file_content):
+    def parse_file(self, file_content: Union[str, bytes]) -> dict:
         try:
             return json.loads(file_content)
         except ValueError as e:

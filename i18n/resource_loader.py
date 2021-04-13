@@ -1,15 +1,19 @@
 import os.path
+from typing import Dict, List, Union
 
 from . import config
-from .loaders.loader import I18nFileLoadError
+from .loaders.loader import I18nFileLoadError, Loader
 from . import translations
 
-loaders = {}
+loaders: Dict[str, Loader] = {}
 
 PLURALS = ["zero", "one", "few", "many", "other"]
 
 
-def register_loader(loader_class, supported_extensions):
+def register_loader(loader_class: Loader, supported_extensions: List[str]):
+    """Set a new resources loader for the given files extensions
+
+    Any extensions previously defined could be overwritten"""
     if not hasattr(loader_class, "load_resource"):
         raise ValueError("loader class should have a 'load_resource' method")
 
@@ -17,14 +21,20 @@ def register_loader(loader_class, supported_extensions):
         loaders[extension] = loader_class()
 
 
-def load_resource(filename, root_data):
+def load_resource(filename: str, root_data: str) -> Union[dict, list, str]:
+    """Loads the dict 'root_data' in the file 'filename'"""
     extension = os.path.splitext(filename)[1][1:]
     if extension not in loaders:
-        raise I18nFileLoadError("no loader available for extension {0}".format(extension))
+        raise I18nFileLoadError(
+            "no loader available for extension {0}".format(extension))
     return getattr(loaders[extension], "load_resource")(filename, root_data)
 
 
 def init_loaders():
+    """Initialize available loaders
+
+    Python should always be available,
+    YAML and JSON only if thei respective libs are already installed"""
     init_python_loader()
     if config.yaml_available:
         init_yaml_loader()
@@ -33,34 +43,48 @@ def init_loaders():
 
 
 def init_python_loader():
+    """Python loader for any .py file"""
     from .loaders.python_loader import PythonLoader
     register_loader(PythonLoader, ["py"])
 
 
 def init_yaml_loader():
+    """YAML loader for any .yml or .yaml file"""
     from .loaders.yaml_loader import YamlLoader
     register_loader(YamlLoader, ["yml", "yaml"])
 
 
 def init_json_loader():
+    """JSON loader for any .json file"""
     from .loaders.json_loader import JsonLoader
     register_loader(JsonLoader, ["json"])
 
 
-def load_config(filename):
+def load_config(filename: str):
+    """Load the lib config from a specified file
+
+    The file should contains a dict nammed 'settings', itself containing
+    one key-value per overwritten config option
+
+    The list of available options is in the config.py file"""
     settings_data = load_resource(filename, "settings")
     for key, value in settings_data.items():
         config.settings[key] = value
 
 
-def get_namespace_from_filepath(filename):
-    namespace = os.path.dirname(filename).strip(os.sep).replace(os.sep, config.get('namespace_delimiter'))
+def get_namespace_from_filepath(filename: str) -> str:
+    """Get the namespace (directory) of a filename according to the config
+
+    filename is a string like 'foo.bar.ya.yml' where the file 'ya.yml' is in the foor/bar/ directory"""
+    namespace = os.path.dirname(filename).strip(os.sep).replace(
+        os.sep, config.get('namespace_delimiter'))
     if '{namespace}' in config.get('filename_format'):
         try:
             splitted_filename = os.path.basename(filename).split('.')
             if namespace:
                 namespace += config.get('namespace_delimiter')
-            namespace += splitted_filename[config.get('filename_format').index('{namespace}')]
+            namespace += splitted_filename[config.get(
+                'filename_format').index('{namespace}')]
         except ValueError:
             raise I18nFileLoadError("incorrect file format.")
     return namespace
@@ -69,7 +93,8 @@ def get_namespace_from_filepath(filename):
 def load_translation_file(filename, base_directory, locale=config.get('locale')):
     skip_locale_root_data = config.get('skip_locale_root_data')
     root_data = None if skip_locale_root_data else locale
-    translations_dic = load_resource(os.path.join(base_directory, filename), root_data)
+    translations_dic = load_resource(
+        os.path.join(base_directory, filename), root_data)
     namespace = get_namespace_from_filepath(filename)
     load_translation_dic(translations_dic, namespace, locale)
 
@@ -109,9 +134,12 @@ def search_translation(key, locale=config.get('locale')):
 def recursive_search_dir(splitted_namespace, directory, root_dir, locale=config.get('locale')):
     if not splitted_namespace:
         return
-    seeked_file = config.get('filename_format').format(namespace=splitted_namespace[0], format=config.get('file_format'), locale=locale)
+    seeked_file = config.get('filename_format').format(
+        namespace=splitted_namespace[0], format=config.get('file_format'), locale=locale)
     dir_content = os.listdir(os.path.join(root_dir, directory))
     if seeked_file in dir_content:
-        load_translation_file(os.path.join(directory, seeked_file), root_dir, locale)
+        load_translation_file(os.path.join(
+            directory, seeked_file), root_dir, locale)
     elif splitted_namespace[0] in dir_content:
-        recursive_search_dir(splitted_namespace[1:], os.path.join(directory, splitted_namespace[0]), root_dir, locale)
+        recursive_search_dir(splitted_namespace[1:], os.path.join(
+            directory, splitted_namespace[0]), root_dir, locale)

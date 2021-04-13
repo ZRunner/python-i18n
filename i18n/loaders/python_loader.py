@@ -1,15 +1,15 @@
 import os.path
 import sys
 
-from .loader import Loader, I18nFileLoadError
+from .loader import I18nFileLoadError, Loader
 
 
 class PythonLoader(Loader):
-    """class to load python files"""
+    """Class to load python files"""
     def __init__(self):
         super(PythonLoader, self).__init__()
 
-    def load_file(self, filename):
+    def load_file(self, filename: str):
         path, name = os.path.split(filename)
         module_name, ext = os.path.splitext(name)
         if path not in sys.path:
