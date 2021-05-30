@@ -1,13 +1,14 @@
 import yaml
+from typing import Union
 
-from .loader import Loader, I18nFileLoadError
+from .loader import I18nFileLoadError, Loader
 
 class YamlLoader(Loader):
-    """class to load yaml files"""
+    """Class to load yaml files"""
     def __init__(self):
         super(YamlLoader, self).__init__()
 
-    def parse_file(self, file_content):
+    def parse_file(self, file_content: Union[str, bytes]) -> dict:
         try:
             if hasattr(yaml, "FullLoader"):
                 return yaml.load(file_content, Loader=yaml.FullLoader)

@@ -28,8 +28,10 @@ settings = {
     'enable_memoization': False
 }
 
-def set(key, value):
+def set(key: str, value):
+    """Edit a config option"""
     settings[key] = value
 
-def get(key):
+def get(key: str):
+    """Returns the value of a config option"""
     return settings[key]
